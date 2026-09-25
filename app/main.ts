@@ -17,7 +17,8 @@ rl.on('line', (input) => {
 
   switch (cmd) {
     case 'echo':
-      console.log(argsRaw);
+      const outputStr = argsRaw.replace(/^\s/, '');
+      console.log(outputStr);
       break;
     case 'exit':
       exit(0);
