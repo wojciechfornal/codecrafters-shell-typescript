@@ -11,9 +11,14 @@ rl.prompt();
 
 rl.on('line', (input) => {
 
-  const [cmd, ...args] = input.trim().split(" ");
+  const match = input.match(/^([^\s]+)(.*)$/);
+  const cmd = match ? match[1] : '';
+  const argsRaw = match ? match[2] : '';
 
   switch (cmd) {
+    case 'echo':
+      console.log(argsRaw);
+      break;
     case 'exit':
       exit(0);
     default:
@@ -22,7 +27,7 @@ rl.on('line', (input) => {
   }
   
   rl.prompt();
-  
+
 });
 
 rl.on('close', () => {
