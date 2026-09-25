@@ -1,10 +1,10 @@
-import { createInterface } from "readline";
+import * as readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
 
-const rl = createInterface({
-  input: process.stdin,
-  output: process.stdout,
+const rl = readline.createInterface({
+  input,
+  output,
   prompt: "$ ",
 });
 
-// TODO: Uncomment the code below to pass the first stage
-// rl.prompt();
+rl.prompt();
