@@ -1,5 +1,7 @@
 import * as readline from 'node:readline/promises';
 import { exit, stdin as input, stdout as output } from 'node:process';
+import { delimiter, join, normalize } from 'node:path';
+import { accessSync, constants } from 'node:fs';
 
 // Types
 
@@ -41,16 +43,23 @@ function cmdType(): CommandHandler {
         console.log(`${cmd} is a shell builtin`);
       } else {
         const PATH = process.env.PATH;
-        const paths = PATH?.split(';') ?? [];
-        for (const path of paths) {
-          console.log('searching path: ' + path);
+        const paths = PATH?.split(delimiter) ?? [];
+        let found = false;
+        for (const dir of paths) {
+          const fullPath = normalize(join(dir, cmd));
+          try {
+            accessSync(fullPath, constants.F_OK | constants.X_OK);
+            console.log(`${cmd} is ${fullPath}`);
+            found = true;
+            break;
+          } catch {
+            // If the file does not exist or lacks execute permissions, skip it
+          }
         }
-        // TODO Perform path normalization if necessary
-        // TODO Check if command (file) exists in path
-        // TODO Check if command (file) has execute permissions
-        // TODO If the file exists and has execute permissions, print "<command> is in <full_path>"
-        // TODO If the file exists but lacks execute permissions, skip it and continue to the next directory
-        console.log(`${cmd}: not found`);
+        
+        if (!found) {
+          console.log(`${cmd}: not found`);
+        }
       }
     }
   }
