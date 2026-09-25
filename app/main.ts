@@ -10,12 +10,21 @@ const rl = readline.createInterface({
 rl.prompt();
 
 rl.on('line', (input) => {
+
   const [cmd, ...args] = input.trim().split(" ");
-  console.log(`${cmd}: command not found`);
+
+  switch (cmd) {
+    case 'exit':
+      exit(0);
+    default:
+      console.log(`${cmd}: command not found`);
+      break;
+  }
+  
   rl.prompt();
+  
 });
 
 rl.on('close', () => {
-  console.log('Bye');
   exit(0);
 });
