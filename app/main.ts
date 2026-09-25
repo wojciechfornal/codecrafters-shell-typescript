@@ -12,7 +12,7 @@ rl.prompt();
 rl.on('line', (input) => {
   const [cmd, ...args] = input.trim().split(" ");
   console.log(`${cmd}: command not found`);
-  exit(1);
+  rl.prompt();
 });
 
 rl.on('close', () => {
