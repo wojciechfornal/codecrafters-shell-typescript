@@ -40,6 +40,16 @@ function cmdType(): CommandHandler {
       if (cmd in commandRegistry) {
         console.log(`${cmd} is a shell builtin`);
       } else {
+        const PATH = process.env.PATH;
+        const paths = PATH?.split(';') ?? [];
+        for (const path of paths) {
+          console.log('searching path: ' + path);
+        }
+        // TODO Perform path normalization if necessary
+        // TODO Check if command (file) exists in path
+        // TODO Check if command (file) has execute permissions
+        // TODO If the file exists and has execute permissions, print "<command> is in <full_path>"
+        // TODO If the file exists but lacks execute permissions, skip it and continue to the next directory
         console.log(`${cmd}: not found`);
       }
     }
@@ -82,4 +92,5 @@ rl.on('close', () => {
 
 // Utility functions
 
-// TODO: Message generation based on interpolated template string
+// TODO Message generation based on interpolated template string
+// TODO Wrapper around console
