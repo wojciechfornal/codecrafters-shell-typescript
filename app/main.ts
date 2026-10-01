@@ -44,11 +44,12 @@ function cmdType(): CommandHandler {
       if (cmd in commandRegistry) {
         console.log(`${cmd} is a shell builtin`);
       } else {
-        const { found } = cmdExistsAndExecutable(cmd);
+        const { found, path } = cmdExistsAndExecutable(cmd);
         if (!found) {
           console.log(`${cmd}: not found`);
           return;
         }
+        console.log(`${cmd} is ${path}`);
       }
     }
   }
@@ -120,7 +121,8 @@ type CmdExistsAndExecutableSuccess = {
 };
 
 type CmdExistsAndExecutableFailure = {
-  found: false
+  found: false,
+  path: null,
 }
 
 /**
