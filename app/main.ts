@@ -91,11 +91,11 @@ rl.on('line', async (input) => {
     const { found } = cmdExistsAndExecutable(cmd);
     if (!found) {
       console.log(`${cmd}: not found`);
-      return;
+    } else {
+      spawnedChildProcess = execCmd(cmd, argsRaw);
+      await once(spawnedChildProcess, 'close');
+      spawnedChildProcess = null;
     }
-    spawnedChildProcess = execCmd(cmd, argsRaw);
-    await once(spawnedChildProcess, 'close');
-    spawnedChildProcess = null;
   }
 
   if (spawnedChildProcess === null) {
