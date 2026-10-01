@@ -1,4 +1,5 @@
 import { ChildProcess, spawn } from 'node:child_process';
+import { cwd } from 'node:process';
 import * as readline from 'node:readline/promises';
 import * as process from 'node:process';
 import { delimiter, join, normalize } from 'node:path';
@@ -34,6 +35,14 @@ function cmdEcho(): CommandHandler {
   };
 }
 
+function cmdPwd(): CommandHandler {
+
+  return (argsRaw) => {
+    console.log(cwd());
+  }
+
+}
+
 function cmdType(): CommandHandler {
 
   return (argsRaw) => {
@@ -67,6 +76,7 @@ function execCmd(cmd: string, args: string | string[]): ChildProcess {
 const commandRegistry: CommandRegistry = {
   'echo': cmdEcho(),
   'exit': cmdExit(),
+  'pwd': cmdPwd(),
   'type': cmdType(),
 };
 
@@ -151,6 +161,7 @@ function cmdExistsAndExecutable(cmd: string): CmdExistsAndExecutableSuccess | Cm
 
   return {
     found: false,
+    path: null,
   };
 
 }
