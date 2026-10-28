@@ -43,7 +43,7 @@ type SystemError = NodeJS.ErrnoException & { code: string };
  * SystemError. At runtime, these errors are instances of the standard JavaScript Error with some extra properties
  * attached.
  * @param error
- * @returns true if the error object is of type Error and contains additional 'code' property
+ * @returns true if the error object is of type Error with additional 'code' property
  */
 const isSystemError = (error: unknown): error is SystemError => {
   return (
@@ -76,7 +76,6 @@ function cmdCd(): CommandHandler {
       return;
     }
 
-    
     const args = tokenizeArgs(argsRaw);
     const path = args[0];
 
@@ -119,8 +118,9 @@ function cmdExit(): CommandHandler {
 
 function cmdEcho(): CommandHandler {
   return (argsRaw) => {
-    const outputStr = argsRaw?.replace(/^\s/, '');
-    console.log(outputStr);
+    const args = tokenizeArgs(argsRaw);
+    console.log(args);
+    console.log(args.join(' '));
   };
 }
 
@@ -247,20 +247,45 @@ function cmdExistsAndExecutable(
 
 /**
  * Splits raw command arguments into an array of unqoted tokens.
- * Handles single quotes, double quotes, and unquoted words.
+ * Handles single quotes, double quotes, adjacent quotes, and empty quotes.
  * For example "path with spaces" dir2 dir3 becomes ['path with spaces', 'dir1', 'dir2']
  * @param argsRaw Raw arguments string
- * @returns
+ * @returns Array of parsed argument tokens
  */
 function tokenizeArgs(argsRaw: string): string[] {
-  const regex = /"([^"]*)"|'([^']*)'|(\S+)/g;
-  const args: string[] = [];
-  let match: RegExpExecArray | null;
+  let currentArg = '';
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let hasToken = false;
 
-  while ((match = regex.exec(argsRaw)) !== null) {
-    // The regex object resumes searching immediately after the previous match
-    // It can be either double quoted content, single quoted content or unqoted word
-    args.push(match[1] ?? match[2] ?? match[3]);
+  const args: string[] = [];
+
+  // 'hello    world' -> hello    world
+  // 'hello''world'   -> helloworld
+  // hello''world     -> helloworld
+
+  for (let i = 0; i < argsRaw.length; i++) {
+    const char = argsRaw[i];
+    if (char === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      hasToken = true;
+    } else if (char === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      hasToken = true;
+    } else if (/\s/.test(char) && !inSingleQuote && !inDoubleQuote) {
+      if (hasToken) {
+        args.push(currentArg);
+        currentArg = '';
+        hasToken = false;
+      }
+    } else {
+      currentArg += char;
+      hasToken = true;
+    }
+  }
+
+  if (hasToken) {
+    args.push(currentArg);
   }
 
   return args;

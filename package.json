@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch app/main.ts",
-    "format": "pnpm exec prettier . --write"
+    "format": "pnpm exec prettier . --write",
+    "submit": "codecrafters submit"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",
