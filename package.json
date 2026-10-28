@@ -3,12 +3,14 @@
   "description": "Build your own Shell challenge, from CodeCrafters",
   "type": "module",
   "scripts": {
-    "dev": "bun run app/main.ts"
+    "dev": "bun run --watch app/main.ts",
+    "format": "pnpm exec prettier . --write"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.2",
     "nodemon": "^3.1.14",
+    "prettier": "3.9.10",
     "ts-node": "^10.9.2"
   }
 }

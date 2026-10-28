@@ -1,3 +1,15 @@
+/**
+ * Project: CodeCrafters - Build Your Own Shell (TypeScript)
+ * Author: Wojciech Fornal <wojciech.fornal@gmail.com>
+ *
+ * This software is provided "as is", without warranty of any kind, express
+ * or implied, including but not limited to the warranties of merchantability,
+ * fitness for a particular purpose, and noninfringement. In no event shall
+ * the author bear any responsibility or be held liable for any claim, damages,
+ * or other liability arising from, out of, or in connection with the software
+ * or the use or other dealings in the software.
+ */
+
 import { ChildProcess, spawn } from 'node:child_process';
 import { cwd } from 'node:process';
 import * as readline from 'node:readline/promises';
@@ -5,23 +17,100 @@ import * as process from 'node:process';
 import { delimiter, join, normalize } from 'node:path';
 import { accessSync, constants } from 'node:fs';
 import { once } from 'node:events';
+import os from 'node:os';
 
 // Types
 
 type CommandHandler = (argsRaw: string) => void;
 type CommandRegistry = Record<string, CommandHandler>;
-type TemplateStrings = Record<string, string>;
+
+type CmdExistsAndExecutableSuccess = {
+  found: true;
+  path: string;
+};
+
+type CmdExistsAndExecutableFailure = {
+  found: false;
+  path: null;
+};
+
+type SystemError = NodeJS.ErrnoException & { code: string };
+
+// Type guards
+
+/**
+ * In Node.js, system and I/O operations (like process.chdir, fs.readFile, etc.) throw what Node internally calls a
+ * SystemError. At runtime, these errors are instances of the standard JavaScript Error with some extra properties
+ * attached.
+ * @param error
+ * @returns true if the error object is of type Error and contains additional 'code' property
+ */
+const isSystemError = (error: unknown): error is SystemError => {
+  return (
+    error instanceof Error && 'code' in error && typeof error.code === 'string'
+  );
+};
 
 // Readline
+
+// TODO Workaround for multiple readline listeners when app is run with Bun's hot reload (--hot)
 
 const rl: readline.Interface = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
-  prompt: "$ ",
+  prompt: '$ ',
 });
 
 // Commands and commands' handlers
 
+/**
+ * 'cd' command implementation.
+ * Delegates to process.chdir to change the current working directory.
+ * @returns A CommandHandler that changes the current working directory.
+ */
+function cmdCd(): CommandHandler {
+  return (argsRaw) => {
+    // If no path given, just behave like "normal" cd by changing working directory to user's home directory
+    if (!argsRaw.trim()) {
+      process.chdir(os.homedir());
+      return;
+    }
+
+    
+    const args = tokenizeArgs(argsRaw);
+    const path = args[0];
+
+    if (path === '~') {
+      process.chdir(os.homedir());
+      return;
+    }
+
+    try {
+      process.chdir(path);
+    } catch (e) {
+      if (isSystemError(e)) {
+        switch (e.code) {
+          // ENOENT: no such file or directory
+          case 'ENOENT':
+            console.log(`cd: ${path}: No such file or directory`);
+            return;
+          default:
+            console.log(`cd: ${e.message}`);
+            break;
+        }
+      }
+    }
+
+    // Verify if the path is formally correct, no invalid characters, file/directory max length, path max length
+    // Normalize path
+    // call process.chdir
+  };
+}
+
+/**
+ * 'exit' command implementation.
+ * @returns
+ */
 function cmdExit(): CommandHandler {
   return () => {
     process.exit(0);
@@ -36,17 +125,13 @@ function cmdEcho(): CommandHandler {
 }
 
 function cmdPwd(): CommandHandler {
-
   return (argsRaw) => {
     console.log(cwd());
-  }
-
+  };
 }
 
 function cmdType(): CommandHandler {
-
   return (argsRaw) => {
-
     const cmds = argsRaw?.trim().split(' ');
 
     for (const cmd of cmds) {
@@ -61,23 +146,31 @@ function cmdType(): CommandHandler {
         console.log(`${cmd} is ${path}`);
       }
     }
-  }
-
+  };
 }
 
+/**
+ * Executes command
+ * @param cmd
+ * @param args
+ * @returns
+ */
 function execCmd(cmd: string, args: string | string[]): ChildProcess {
   let argsArr: string[] = [];
+
   if (!Array.isArray(args)) {
     argsArr = args.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
   }
+
   return spawn(cmd, argsArr, { stdio: 'inherit' });
 }
 
 const commandRegistry: CommandRegistry = {
-  'echo': cmdEcho(),
-  'exit': cmdExit(),
-  'pwd': cmdPwd(),
-  'type': cmdType(),
+  cd: cmdCd(),
+  echo: cmdEcho(),
+  exit: cmdExit(),
+  pwd: cmdPwd(),
+  type: cmdType(),
 };
 
 // Program start
@@ -86,7 +179,6 @@ const commandRegistry: CommandRegistry = {
 rl.prompt();
 
 rl.on('line', async (input) => {
-
   const match = input.match(/^([^\s]+)(.*)$/);
   const cmd = match ? match[1] : '';
   const argsRaw = match ? match[2] : '';
@@ -110,8 +202,7 @@ rl.on('line', async (input) => {
 
   if (spawnedChildProcess === null) {
     rl.prompt();
-  }  
-
+  }
 });
 
 // Close
@@ -123,26 +214,15 @@ rl.on('close', () => {
 // Utility functions
 // =====================================================================================================================
 
-// cmdExistsAndExecutable
-
-type CmdExistsAndExecutableSuccess = {
-  found: true,
-  path: string,
-};
-
-type CmdExistsAndExecutableFailure = {
-  found: false,
-  path: null,
-}
-
 /**
  * Checks if a command exists in the system's PATH and is executable.
- * 
+ *
  * @param cmd - The name of the command to search for.
  * @returns An object indicating whether the command was found, and if so, its absolute path.
  */
-function cmdExistsAndExecutable(cmd: string): CmdExistsAndExecutableSuccess | CmdExistsAndExecutableFailure {
-
+function cmdExistsAndExecutable(
+  cmd: string,
+): CmdExistsAndExecutableSuccess | CmdExistsAndExecutableFailure {
   const PATH = process.env.PATH;
   const paths = PATH?.split(delimiter) ?? [];
 
@@ -152,10 +232,10 @@ function cmdExistsAndExecutable(cmd: string): CmdExistsAndExecutableSuccess | Cm
       accessSync(fullPath, constants.F_OK | constants.X_OK);
       return {
         found: true,
-        path: fullPath
-      }
+        path: fullPath,
+      };
     } catch {
-      // If the file does not exist or lacks execute permissions, skip it
+      // Just skip files that do not exist or can't be executed
     }
   }
 
@@ -163,8 +243,29 @@ function cmdExistsAndExecutable(cmd: string): CmdExistsAndExecutableSuccess | Cm
     found: false,
     path: null,
   };
-
 }
 
-// TODO Message generation based on interpolated template string
+/**
+ * Splits raw command arguments into an array of unqoted tokens.
+ * Handles single quotes, double quotes, and unquoted words.
+ * For example "path with spaces" dir2 dir3 becomes ['path with spaces', 'dir1', 'dir2']
+ * @param argsRaw Raw arguments string
+ * @returns
+ */
+function tokenizeArgs(argsRaw: string): string[] {
+  const regex = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  const args: string[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(argsRaw)) !== null) {
+    // The regex object resumes searching immediately after the previous match
+    // It can be either double quoted content, single quoted content or unqoted word
+    args.push(match[1] ?? match[2] ?? match[3]);
+  }
+
+  return args;
+}
+
+// TODO Message generation with the use of template strings
 // TODO Wrapper around console
+// TODO Utility to parse / sanitize / normalize argsRaw
