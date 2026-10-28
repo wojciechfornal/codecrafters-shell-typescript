@@ -119,7 +119,6 @@ function cmdExit(): CommandHandler {
 function cmdEcho(): CommandHandler {
   return (argsRaw) => {
     const args = tokenizeArgs(argsRaw);
-    console.log(args);
     console.log(args.join(' '));
   };
 }
