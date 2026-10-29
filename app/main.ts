@@ -143,7 +143,8 @@ function cmdPwd(): CommandHandler {
  */
 function cmdType(): CommandHandler {
   return (argsRaw) => {
-    const cmds = argsRaw?.trim().split(' ');
+    const args = tokenizeArgs(argsRaw ?? '');
+    const cmds = args.slice(1);
 
     for (const cmd of cmds ?? []) {
       if (cmd in commandRegistry) {
