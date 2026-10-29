@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
-import { tokenizeArgs } from './parser.ts';
+import type { Token } from './parser.ts';
+import { tokenize, tokenizeArgs } from './parser.ts';
 
 describe('parser', () => {
 
@@ -75,12 +76,51 @@ describe('parser', () => {
         describe('Backslash Escaping', () => {
 
             test('Each \\  creates a literal space as part of one argument.', () => {
-                console.log('xxx', tokenizeArgs("echo three\ \ \ spaces"));
                 expect(tokenizeArgs("echo three\\ \\ \\ spaces")).toEqual(['echo', 'three   spaces']);
             });
 
             // TODO Add remaining tests for Backslash Escaping
 
+        });
+
+    });
+
+    describe('tokenize()', () => {
+
+        test('tokenizer produces two WORD tokens', () => {
+            const argsRaw = 'echo hello';
+            const expectedResult: Token[] = [];
+            expectedResult.push({ type: 'WORD', value: 'echo', raw: 'echo' });
+            expectedResult.push({ type: 'WORD', value: 'hello', raw: 'hello' });
+            const tokenizeResult = tokenize(argsRaw);
+            expect(tokenizeResult).toBeArray();
+            expect(tokenizeResult).toBeArrayOfSize(2);
+        });
+
+        test('tokenizer produces WORDS and REDIRECT_STDOUT', () => {
+            const argsRaw = 'echo hi > f';
+            const expectedResult: Token[] = [];
+            expectedResult.push({ type: 'WORD', value: 'echo', raw: 'echo' });
+            expectedResult.push({ type: 'WORD', value: 'hi', raw: 'hi' });
+            expectedResult.push({ type: 'REDIRECT_STDOUT', value: 'f', raw: 'f' });
+            const tokenizeResult = tokenize(argsRaw);
+            expect(tokenizeResult).toBeArray();
+            expect(tokenizeResult).toBeArrayOfSize(4);
+            expect(tokenizeResult[2].type).toEqual('REDIRECT_STDOUT');
+            expect(tokenizeResult[2].value).toEqual('>');
+        });
+
+        test('tokenizer produces WORDS and REDIRECT_STDOUT with file descriptor', () => {
+            const argsRaw = 'echo hi 1> f';
+            const expectedResult: Token[] = [];
+            expectedResult.push({ type: 'WORD', value: 'echo', raw: 'echo' });
+            expectedResult.push({ type: 'WORD', value: 'hi', raw: 'hi' });
+            expectedResult.push({ type: 'REDIRECT_STDOUT', value: 'f', raw: 'f' });
+            const tokenizeResult = tokenize(argsRaw);
+            expect(tokenizeResult).toBeArray();
+            expect(tokenizeResult).toBeArrayOfSize(4);
+            expect(tokenizeResult[2].type).toEqual('REDIRECT_STDOUT');
+            expect(tokenizeResult[2].value).toEqual('1>');
         });
 
     });
