@@ -281,7 +281,7 @@ function tokenizeArgs(argsRaw: string): string[] {
 
   for (let i = 0; i < argsRaw.length; i++) {
     const char = argsRaw[i];
-    if (!inSingleQuote && !inDoubleQuote && !inEscapeMode && char === '\\') {
+    if (!inSingleQuote && !inEscapeMode && char === '\\') {
       inEscapeMode = true;
       continue;
     }
