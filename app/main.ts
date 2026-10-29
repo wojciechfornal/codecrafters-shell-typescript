@@ -270,6 +270,7 @@ function tokenizeArgs(argsRaw: string): string[] {
   let currentArg = '';
   let inSingleQuote = false;
   let inDoubleQuote = false;
+  let inEscapeMode = false;
   let hasToken = false;
 
   const args: string[] = [];
@@ -280,6 +281,15 @@ function tokenizeArgs(argsRaw: string): string[] {
 
   for (let i = 0; i < argsRaw.length; i++) {
     const char = argsRaw[i];
+    if (!inSingleQuote && !inDoubleQuote && !inEscapeMode && char === '\\') {
+      inEscapeMode = true;
+      continue;
+    }
+    if (inEscapeMode) {
+      currentArg += char;
+      inEscapeMode = false;
+      continue;
+    }
     if (char === "'" && !inDoubleQuote) {
       inSingleQuote = !inSingleQuote;
       hasToken = true;
