@@ -169,10 +169,10 @@ function cmdType(): CommandHandler {
  */
 function execCmd(
   cmd: string,
-  executablePath: string,
+  executablePath: string | null,
   args: string[],
 ): ChildProcess {
-  return spawn(executablePath, args, { stdio: 'inherit' });
+  return spawn(cmd, args, { stdio: 'inherit' });
 }
 
 // TODO Consider command registration by commandRegistry.registerCmd(...)
