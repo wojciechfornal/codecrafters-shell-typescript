@@ -116,19 +116,31 @@ function cmdExit(): CommandHandler {
   };
 }
 
+/**
+ * 'echo' command implementation.
+ * @returns
+ */
 function cmdEcho(): CommandHandler {
   return (argsRaw) => {
     const args = tokenizeArgs(argsRaw ?? '');
-    console.log(args.join(' '));
+    console.log(args.slice(1).join(' '));
   };
 }
 
+/**
+ * 'pwd' command implementation.
+ * @returns
+ */
 function cmdPwd(): CommandHandler {
   return (_argsRaw) => {
     console.log(cwd());
   };
 }
 
+/**
+ * 'type' command implementation.
+ * @returns
+ */
 function cmdType(): CommandHandler {
   return (argsRaw) => {
     const cmds = argsRaw?.trim().split(' ');
