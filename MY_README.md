@@ -12,6 +12,12 @@ Bun for Visual Studio Code
 bun --inspect --watch app/main.ts
 ```
 
+# Testing
+
+```shell
+bun test
+```
+
 # Troubleshooting submission
 
 `error: lockfile had changes, but lockfile is frozen`, `Error: process "/bin/sh -c bun install --frozen-lockfile" did not complete successfully: exit code: 1.` and stuff like that.

@@ -19,6 +19,8 @@ import { accessSync, constants } from 'node:fs';
 import { once } from 'node:events';
 import os from 'node:os';
 
+import { tokenizeArgs } from './parser.ts';
+
 // Types
 
 type CommandHandler = (argsRaw?: string) => void;
@@ -99,10 +101,6 @@ function cmdCd(): CommandHandler {
         }
       }
     }
-
-    // Verify if the path is formally correct, no invalid characters, file/directory max length, path max length
-    // Normalize path
-    // call process.chdir
   };
 }
 
@@ -176,6 +174,7 @@ function execCmd(
 }
 
 // TODO Consider command registration by commandRegistry.registerCmd(...)
+// TODO Maybe the whole command registry should be moved to another file and imported
 const commandRegistry: CommandRegistry = {
   cd: cmdCd(),
   echo: cmdEcho(),
@@ -191,6 +190,7 @@ rl.prompt();
 
 rl.on('line', async (input) => {
   const trimmed = input.trim();
+
   if (!trimmed) {
     rl.prompt();
     return;
@@ -202,6 +202,8 @@ rl.on('line', async (input) => {
   let spawnedChildProcess: ChildProcess | null = null;
 
   if (handler) {
+    // TODO Lexing and parsing should probably happen in one place and not in each handler
+    // TODO Do not pass raw trimmed input but what comes from tokenizer instead
     handler(trimmed);
   } else {
     const { found, path } = cmdExistsAndExecutable(cmd);
@@ -257,62 +259,6 @@ function cmdExistsAndExecutable(
     found: false,
     path: null,
   };
-}
-
-/**
- * Splits raw command arguments into an array of unqoted tokens.
- * Handles single quotes, double quotes, adjacent quotes, and empty quotes.
- * For example "path with spaces" dir2 dir3 becomes ['path with spaces', 'dir1', 'dir2']
- * @param argsRaw Raw arguments string
- * @returns Array of parsed argument tokens
- */
-function tokenizeArgs(argsRaw: string): string[] {
-  let currentArg = '';
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-  let inEscapeMode = false;
-  let hasToken = false;
-
-  const args: string[] = [];
-
-  // 'hello    world' -> hello    world
-  // 'hello''world'   -> helloworld
-  // hello''world     -> helloworld
-
-  for (let i = 0; i < argsRaw.length; i++) {
-    const char = argsRaw[i];
-    if (!inSingleQuote && !inEscapeMode && char === '\\') {
-      inEscapeMode = true;
-      continue;
-    }
-    if (inEscapeMode) {
-      currentArg += char;
-      inEscapeMode = false;
-      continue;
-    }
-    if (char === "'" && !inDoubleQuote) {
-      inSingleQuote = !inSingleQuote;
-      hasToken = true;
-    } else if (char === '"' && !inSingleQuote) {
-      inDoubleQuote = !inDoubleQuote;
-      hasToken = true;
-    } else if (/\s/.test(char) && !inSingleQuote && !inDoubleQuote) {
-      if (hasToken) {
-        args.push(currentArg);
-        currentArg = '';
-        hasToken = false;
-      }
-    } else {
-      currentArg += char;
-      hasToken = true;
-    }
-  }
-
-  if (hasToken) {
-    args.push(currentArg);
-  }
-
-  return args;
 }
 
 // TODO Message generation with the use of template strings

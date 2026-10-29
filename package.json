@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch app/main.ts",
-    "format": "pnpm exec prettier . --write",
+    "format": "bun x prettier . --write",
     "submit": "codecrafters submit"
   },
   "devDependencies": {
@@ -13,5 +13,10 @@
     "nodemon": "^3.1.14",
     "prettier": "3.9.10",
     "ts-node": "^10.9.2"
+  },
+  "module": "index.ts",
+  "private": true,
+  "peerDependencies": {
+    "typescript": "7.0.2"
   }
 }
