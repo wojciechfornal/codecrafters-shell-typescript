@@ -21,7 +21,7 @@ import os from 'node:os';
 
 // Types
 
-type CommandHandler = (argsRaw: string) => void;
+type CommandHandler = (argsRaw?: string) => void;
 type CommandRegistry = Record<string, CommandHandler>;
 
 type CmdExistsAndExecutableSuccess = {
@@ -71,13 +71,13 @@ const rl: readline.Interface = readline.createInterface({
 function cmdCd(): CommandHandler {
   return (argsRaw) => {
     // If no path given, just behave like "normal" cd by changing working directory to user's home directory
-    if (!argsRaw.trim()) {
+    if (!argsRaw || !argsRaw.trim()) {
       process.chdir(os.homedir());
       return;
     }
 
     const args = tokenizeArgs(argsRaw);
-    const path = args[0];
+    const path = args[1];
 
     if (path === '~') {
       process.chdir(os.homedir());
@@ -118,13 +118,13 @@ function cmdExit(): CommandHandler {
 
 function cmdEcho(): CommandHandler {
   return (argsRaw) => {
-    const args = tokenizeArgs(argsRaw);
+    const args = tokenizeArgs(argsRaw ?? '');
     console.log(args.join(' '));
   };
 }
 
 function cmdPwd(): CommandHandler {
-  return (argsRaw) => {
+  return (_argsRaw) => {
     console.log(cwd());
   };
 }
@@ -133,7 +133,7 @@ function cmdType(): CommandHandler {
   return (argsRaw) => {
     const cmds = argsRaw?.trim().split(' ');
 
-    for (const cmd of cmds) {
+    for (const cmd of cmds ?? []) {
       if (cmd in commandRegistry) {
         console.log(`${cmd} is a shell builtin`);
       } else {
@@ -149,21 +149,20 @@ function cmdType(): CommandHandler {
 }
 
 /**
- * Executes command
+ * Runs external executables
  * @param cmd
  * @param args
  * @returns
  */
-function execCmd(cmd: string, args: string | string[]): ChildProcess {
-  let argsArr: string[] = [];
-
-  if (!Array.isArray(args)) {
-    argsArr = args.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
-  }
-
-  return spawn(cmd, argsArr, { stdio: 'inherit' });
+function execCmd(
+  cmd: string,
+  executablePath: string,
+  args: string[],
+): ChildProcess {
+  return spawn(executablePath, args, { stdio: 'inherit' });
 }
 
+// TODO Consider command registration by commandRegistry.registerCmd(...)
 const commandRegistry: CommandRegistry = {
   cd: cmdCd(),
   echo: cmdEcho(),
@@ -178,22 +177,25 @@ const commandRegistry: CommandRegistry = {
 rl.prompt();
 
 rl.on('line', async (input) => {
-  const match = input.match(/^([^\s]+)(.*)$/);
-  const cmd = match ? match[1] : '';
-  const argsRaw = match ? match[2] : '';
+  const trimmed = input.trim();
+  if (!trimmed) {
+    rl.prompt();
+    return;
+  }
+
+  const [cmd, ...args] = tokenizeArgs(trimmed);
 
   const handler = commandRegistry[cmd];
-
   let spawnedChildProcess: ChildProcess | null = null;
 
   if (handler) {
-    handler(argsRaw);
+    handler(trimmed);
   } else {
-    const { found } = cmdExistsAndExecutable(cmd);
+    const { found, path } = cmdExistsAndExecutable(cmd);
     if (!found) {
       console.log(`${cmd}: not found`);
     } else {
-      spawnedChildProcess = execCmd(cmd, argsRaw);
+      spawnedChildProcess = execCmd(cmd, path, args);
       await once(spawnedChildProcess, 'close');
       spawnedChildProcess = null;
     }
