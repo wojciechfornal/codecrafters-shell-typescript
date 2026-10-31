@@ -34,7 +34,7 @@ const OperatorTokenTypes: Record<string, TokenType> = {
 // Functions
 
 /**
- * Splits raw command arguments into an array of unqoted tokens.
+ * Splits raw command arguments into an array of unqoted tokens (words).
  * Handles single quotes, double quotes, adjacent quotes, and empty quotes.
  * For example "path with spaces" dir2 dir3 becomes ['path with spaces', 'dir1', 'dir2']
  * @param argsRaw Raw arguments string
@@ -106,6 +106,7 @@ export function tokenize(argsRaw: string): Token[] {
 
   for (let i = 0; i < argsRaw.length; i++) {
     const char = argsRaw[i];
+    const nextChar = i + 1 < argsRaw.length ? argsRaw[i + 1] : null;
     // TODO Escape behavior different when in single quote and in double quotes mode
     if (!inSingleQuote && !inEscapeMode && char === '\\') {
       inEscapeMode = true;
@@ -127,55 +128,12 @@ export function tokenize(argsRaw: string): Token[] {
       hasToken = true;
       // Potential redirect operator becomes invalid
       operatorBuffer = '';
-    } else if (
-      !inDoubleQuote &&
-      !inSingleQuote &&
-      !inEscapeMode &&
-      (operators.includes(char) || fileDescriptors.includes(char))
-    ) {
-      // Reference cases:
-      // - echo hi > f
-      //           ^
-      // - echo hi 1> f
-      // - echo hi>f
-      // - > f echo pre
-      const nextChar = i + 1 < argsRaw.length ? argsRaw[i + 1] : null;
-      if (
-        currentArgBuffer === '' ||
-        fileDescriptors.includes(currentArgBuffer)
-      ) {
-        hasToken = true;
-        // Just first redirect operator, alone or after file descriptor
-        if (operators.includes(char)) {
-          operatorBuffer += char;
-          currentArgBuffer = operatorBuffer;
-          if (nextChar === char) {
-            // And eventually another one of the same type (append)
-            operatorBuffer += char;
-            currentArgBuffer = operatorBuffer;
-            i++;
-            continue;
-          }
-        }
-        if (currentArgBuffer === '' && fileDescriptors.includes(char)) {
-          // Just first file descriptor
-          operatorBuffer += char;
-          currentArgBuffer = operatorBuffer;
-          if (operators.includes(nextChar ?? '')) {
-            // And eventually another one of the same type (append)
-            operatorBuffer += nextChar;
-            currentArgBuffer = operatorBuffer;
-            i++;
-            continue;
-          }
-        }
-
-        continue;
-      }
     } else if (/\s/.test(char) && !inSingleQuote && !inDoubleQuote) {
+      // @@beg: space encountered
       let tokenType: TokenType = 'WORD';
       if (currentArgBuffer === operatorBuffer) {
         tokenType = OperatorTokenTypes[operatorBuffer];
+        operatorBuffer = '';
       }
       if (hasToken) {
         tokens.push({
@@ -186,10 +144,73 @@ export function tokenize(argsRaw: string): Token[] {
         currentArgBuffer = '';
         hasToken = false;
       }
+      continue;
+      // @@end: space encountered
     } else {
-      currentArgBuffer += char;
-      hasToken = true;
+
+      let potentialOperatorSequence = false;
+
+      if (operators.includes(char) || fileDescriptors.includes(char)) {
+        // possible file descriptor and redirection operator sequence
+        potentialOperatorSequence = true;
+        if (fileDescriptors.includes(char)) {
+          operatorBuffer += char;
+          // next chars can be either single > or double >>, nothing else can go to operator buffer with 'numeric' file descriptor already
+          while (potentialOperatorSequence && i < argsRaw.length - 1) {
+            i++;
+            const potentialOperatorChar = argsRaw[i];
+            if (
+              operators.includes(potentialOperatorChar) &&
+              operatorBuffer.length <= 3
+            ) {
+              if (operatorBuffer.length === 2) {
+                // if current redirection operator does not match redirection operator in the buffer
+                if (potentialOperatorChar !== operatorBuffer[1]) {
+                  potentialOperatorSequence = false;
+                }
+              }
+              operatorBuffer += potentialOperatorChar;
+            } else {
+              potentialOperatorSequence = false;
+            }
+          }
+        } else if (operators.includes(char)) {
+          // possible redirection operator mode
+          operatorBuffer += char;
+          // next chars can be a just another one same operator, eg. if we have > in the buffer then next one needs to be > as well
+          if (i < argsRaw.length - 1) {
+            const potentialOperatorChar = argsRaw[i + 1];
+            if (potentialOperatorChar === operatorBuffer[0]) {
+              operatorBuffer += potentialOperatorChar;
+              i++;
+            }
+          }
+        }
+      }
+
+      if (operatorBuffer.length === 0) {
+        currentArgBuffer += char;
+        hasToken = true;
+      } else {
+        if (currentArgBuffer.length) {
+          tokens.push({
+            type: 'WORD',
+            value: currentArgBuffer,
+            raw: currentArgBuffer,
+          });
+        }
+        currentArgBuffer = '';
+        hasToken = false;
+        tokens.push({
+          type: OperatorTokenTypes[operatorBuffer],
+          value: operatorBuffer,
+          raw: operatorBuffer,
+        });
+        operatorBuffer = '';
+      }
+
     }
+
   }
 
   if (hasToken) {

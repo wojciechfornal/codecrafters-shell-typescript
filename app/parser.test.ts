@@ -115,13 +115,32 @@ describe('parser', () => {
             const expectedResult: Token[] = [];
             expectedResult.push({ type: 'WORD', value: 'echo', raw: 'echo' });
             expectedResult.push({ type: 'WORD', value: 'hi', raw: 'hi' });
-            expectedResult.push({ type: 'REDIRECT_STDOUT', value: 'f', raw: 'f' });
+            expectedResult.push({ type: 'REDIRECT_STDOUT', value: '>', raw: '>' });
+            expectedResult.push({ type: 'WORD', value: 'f', raw: 'f' });
             const tokenizeResult = tokenize(argsRaw);
             expect(tokenizeResult).toBeArray();
             expect(tokenizeResult).toBeArrayOfSize(4);
             expect(tokenizeResult[2].type).toEqual('REDIRECT_STDOUT');
             expect(tokenizeResult[2].value).toEqual('1>');
         });
+
+        test('operators do not require whitespace - echo hi>out', () => {
+            const argsRaw = 'echo hi>out';
+            const expetedResult: Token[] = [];
+            expetedResult.push({ type: 'WORD', value: 'echo', raw: 'echo' });
+            expetedResult.push({ type: 'WORD', value: 'hi', raw: 'hi' });
+            expetedResult.push({ type: 'REDIRECT_STDOUT', value: '1', raw: '1' });
+            expetedResult.push({ type: 'WORD', value: 'out', raw: 'out' });
+            const tokenizeResult = tokenize(argsRaw);
+            expect(tokenizeResult).toBeArray();
+            expect(tokenizeResult).toBeArrayOfSize(4);
+            expect(tokenizeResult[2].type).toEqual('REDIRECT_STDOUT');
+            expect(tokenizeResult[2].value).toEqual('>');
+            expect(tokenizeResult[3].type).toEqual('WORD');
+            expect(tokenizeResult[3].value).toEqual('out');
+        });
+
+        // TODO test case: file descriptors are recognized when not whitespace - echo hi2>out
 
     });
 
